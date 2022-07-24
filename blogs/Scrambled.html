@@ -54,7 +54,7 @@
             <img src="../images/17.png"><br>
             After that we must get Service Principal Names for ksimpson, that way we might be able to get access to other user's account.<br>
             This is where I got stuck a little bit because impacket-GetUserSPNs kept command failing due to BaseException error.<br>
-            However I scumbled into VBScrub's Github Issue about this bug. <a href="https://github.com/SecureAuthCorp/impacket/issues/1206">Here</a>'s the solution if you're interested.<br>
+            However I stumbled into VBScrub's Github Issue about this bug. <a href="https://github.com/SecureAuthCorp/impacket/issues/1206">Here</a>'s the solution if you're interested.<br>
             Before getting user spn's we must export KRB5CCNAME as kksimpson.ccache.<br>
             <img src="../images/18.png"><br>
             Now we can get user spn's<br>
