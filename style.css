@@ -1,3 +1,9 @@
+textarea { 
+  white-space: nowrap; 
+  color: rgb(255, 255, 255);
+  border-color: rgb(106, 98, 87);
+  background-color: #131516;
+}
 html, body {
   border-color: rgb(106, 98, 87);
   color: rgb(216, 212, 207);
