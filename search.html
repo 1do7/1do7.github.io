@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="/index.js"></script>
+        <title>1do7 | TERRIBLE Hacking Blogs</title>
+        <script>
+            function myFunction() {
+              // Declare variables
+              var input, filter, ul, li, a, i, txtValue;
+              input = document.getElementById('myInput');
+              filter = input.value.toUpperCase();
+              ul = document.getElementById("myUL");
+              li = ul.getElementsByTagName('li');
+            
+              for (i = 0; i < li.length; i++) {
+                a = li[i].getElementsByTagName("a")[0];
+                txtValue = a.textContent || a.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                  li[i].style.display = "";
+                } else {
+                  li[i].style.display = "none";
+                }
+              }
+            }
+            </script>
+    </head>
+    <body>
+      <br>
+        <div>
+            <input type="text" id="myInput" onkeyup="myFunction()" placeholder="Search for a blog..">
+            <ul id="myUL">
+                <li><a href="/blogs/Olympus.html">Try Hack Me: Olympus<br>└─ #WebApp, #TryHackMe, #SQLI, #linux, #medium</a></li>
+                <li><a href="/blogs/InfoSec_Resources.html">InfoSec Resources<br>└─ #InfoSec, #Leaks, #medium</a></li>
+                <li><a href="/blogs/Scrambled.html">Hack The Box: Scrambled<br>└─ #WebApp, #HackTheBox, #ReverseEngineering, #AD, #kerberos, #kerberoasting, #.NET, #deserialization_vuln, #windows, #medium</a></li>
+            </ul>
+        </div>
+    </body>
+</html>
