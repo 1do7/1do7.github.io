@@ -1,20 +1,116 @@
-textarea { 
-  white-space: nowrap; 
-  color: rgb(255, 255, 255);
-  border-color: rgb(106, 98, 87);
-  background-color: #131516;
+#myInput {
+  width: 100%; /* Full-width */
+  font-size: 16px; /* Increase font-size */
+  padding: 12px 20px 12px 1px; /* Add some padding */
+  border: 1px solid #3d3253; /* Add a grey border */
+  margin-bottom: 12px; /* Add some space below the input */
+  color:  #ffffff;
+  background-color: #29272f;
 }
+
+#myUL {
+  /* Remove default list styling */
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+#myUL li a {
+  border: 1px solid #000000; /* Add a border to all links */
+  margin-top: -1px; /* Prevent double borders */
+  background-color: #29272f; /* Grey background color */
+  padding: 12px; /* Add some padding */
+  text-decoration: none; /* Remove default text underline */
+  font-size: 18px; /* Increase the font-size */
+  color: rgb(255, 255, 255); /* Add a black text color */
+  display: block; /* Make it into a block element to fill the whole list */
+}
+
+#myUL li a:hover:not(.header) {
+  background-color: rgb(232, 134, 232); /* Add a hover effect to all links, except for headers */
+}
+/* The side navigation menu */
+.sidebar {
+  margin: auto;
+  padding: 0;
+  width: 200px;
+  background-color: #29272f;
+  position: absolute;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Sidebar links */
+.sidebar a {
+  display: block;
+  color: rgb(255, 255, 255);
+  padding: 16px;
+  text-decoration: none;
+  background-color: #201e24;
+  font-family: monospace;
+  font-size: 20px;
+}
+
+/* Active/current link */
+.sidebar a.active {
+  background-color: #04AA6D;
+  color: white;
+}
+
+
+/* Page content. The value of the margin-left property should match the value of the sidebar's width property */
+div.content {
+  margin-left: 200px;
+  padding: 1px 16px;
+  height: 1000px;
+}
+.sidebar a:hover:not(.active) {
+  background-color: #555;
+  color: white;
+}
+/* On screens that are less than 700px wide, make the sidebar into a topbar */
+@media screen and (max-width: 700px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+  .sidebar a {float: left;}
+  div.content {margin-left: 0;}
+}
+
+/* On screens that are less than 400px, display the bar vertically, instead of horizontally */
+@media screen and (max-width: 400px) {
+  .sidebar a {
+    text-align: center;
+    float: none;
+  }
+}
+img{
+  max-width: 100%;
+  max-height: 100%;
+  display: block; /* remove extra space below image */
+}
+.center {
+  margin: auto;
+  width: 60%;
+  border: 5px solid #0b0b0b;
+  padding: 10px;
+  }
 html, body {
   border-color: rgb(106, 98, 87);
   color: rgb(216, 212, 207);
   background-color: #131516;
 }
 div {
-  background-color: rgb(35, 38, 40);
+  background-color: #29272f;
   display: block;
+  color: rgb(255, 255, 255);
+  font-family: Arial;
+  font-size: 15px;
 }
 h4 {
-  background-color: rgb(35, 38, 40);
+  background-color: #29272f;
   display: block;
   font-family: system-ui;
 }
@@ -37,17 +133,29 @@ h2 {
   font-family: 'Courier New', monospace;
   font-size: 40px;
 }
+.normal {
+  color: rgb(255, 255, 255);
+  font-family: Arial;
+}
 ul {
-  color: rgb(0, 0, 0);
+  color: rgb(232, 134, 232);;
   font-family: 'Courier New', monospace;
   font-size: 40px;
+}
+.pink {
+  background-color: rgb(232, 134, 232);
 }
 a {
   color: rgb(232, 134, 232);
   font-family: sans-serif;
 }
+code {
+  font-size: small;
+  font-family: monospace;
+}
+
 .topnav {
-  background-color: rgb(35, 38, 40);
+  background-color: #29272f;
   overflow: hidden;
 }
 .topnav a {
