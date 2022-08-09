@@ -1,0 +1,1 @@
+document.write('<div class="sidebar"><a href="#passive_recon">Recon 🕵</a><a href="#foothold">Foothold 🤮</a><a href="#user">User 🥳</a><a href="#root">Root 😎</a><a href="#analysis">Analysis 🤓</a></div>');
