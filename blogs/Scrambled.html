@@ -1,129 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="../images/favicon-32x32.png?">
-        <meta charset="UTF-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="/index.js"></script>
+        <script src="/blogs/blog.js"></script>
         <title>1do7 | Hack The Box: Scrambled</title>
-        <link rel="stylesheet" href="../style.css">
     </head>
     <body>
-        <div class="topnav">
-            <a class="active" href="../index.html">Home</a>
-            <a class="active" href="../about.html">Who The Fuck Am I?</a>
-            <p dir="rtl"><b>Idot#8152</b></p>
-          </div>
-        <div>
+
+        <div class = "center">
             <h1>HTB Scrambled Write-up</h1>
-        <p>
-            Starting out with scrambled I quickly ran a RustScan since this is a windows box and it'll prob have shit ton of ports open, I could've just used --min-rate 10000 with nmap but for some reason nmap keeps giving me false reports.
+            <h2 id="passive_recon" class="normal">Recon Work 🕵:</h2>
+            <p>Starting out with scrambled I quickly ran a RustScan since this is a windows box and it'll prob have shit ton of ports open, I could've just used --min-rate 10000 with nmap but for some reason nmap keeps giving me false reports.</p>
             <img src="../images/1.png">
-            <br>I ran nmap with -A parameter to gather more information about the open ports.<br>
-            <img src="../images/2.png"><br>
-            <img src="../images/3.png"><br>
-            <img src="../images/4.png"><br>
-            <img src="../images/5.png"><br>
-            As we can see, this is an Active Directory box with kerberos security. However before attempting to exploit kerberos I first checked out the site on port 80.<br>
-            Looks like an ISP site(?) Let's gather more info.<br>
-            <img src="../images/6.png", width="1000", height="500"><br>
-            The NTLM authentication is off because someone hacked the website, interesting.<br>
-            <img src="../images/7.png", width="1000", height="500"><br>
-            These just look like they're a rabbit hole ¯\_(ツ)_/¯<br>
-            <img src="../images/8.png", width="1000", height="500"><br>
-            <img src="../images/9.png", width="1000", height="500"><br>
-            Ok, I don't think there's any vulnerabilities in the site itself. Let's take a look at the Active Directory.<br>
-            Before attempting to login we must edit our /etc/hosts file and add the Active Directory domain. (Please ignore the olympus one, that's for another box.)<br>
-            <img src="../images/10.png"><br>
-            After that we can use kerbrute tool to enumerate Active Directory users.<br>
-            <img src="../images/11.png"><br>
-            You can find the user list I used in <a href="https://github.com/attackdebris/kerberos_enum_userlists/blob/master/A-Z.Surnames.txt">here.</a> However I removed all the dots from the Surname list using this command because usernames can't have dots in them.<br>
-            <img src="../images/12.png"><br>
-            Anyways let's look at the results!<br>
-            <img src="../images/13.png"><br>
-            We have few usernames, let's brute force them. Before trying to use a gigantic username list like rockyou.txt I'll just try to login with using the usernames as password first.<br>
-            I'll use elpscrk because it's cool + the passwords might be upper/lowercase idfk.<br>
-            <img src="../images/14.png"><br>
-            Here's our generated password list:<br>
-            <img src="../images/15.png"><br>
-            I went ahead and tried to login with all the usernames. And I could only access ksimpson's account.<br>
-            <img src="../images/16.png"><br>
-            We have access to Ksimpson's account but it's underprivilaged as fuck so we need to access another account if we want to get into the system.<br>
-            I googled up kerberos exploits and I stumbled upon <a href="https://www.youtube.com/watch?v=xH5T9-m9QXw">VBScrub</a>'s kerberoast tutorial, the funny thing is this is the same guy who made this machine, so it was pretty clear this was the way.<br>
-            First of all let's go ahead and get TGT (Ticket-Granting-Ticket) as ksimpson user.<br>
-            <img src="../images/17.png"><br>
-            After that we must get Service Principal Names for ksimpson, that way we might be able to get access to other user's account.<br>
-            This is where I got stuck a little bit because impacket-GetUserSPNs kept command failing due to BaseException error.<br>
-            However I stumbled into VBScrub's Github Issue about this bug. <a href="https://github.com/SecureAuthCorp/impacket/issues/1206">Here</a>'s the solution if you're interested.<br>
-            Before getting user spn's we must export KRB5CCNAME as kksimpson.ccache.<br>
-            <img src="../images/18.png"><br>
-            Now we can get user spn's<br>
-            <img src="../images/19.png", width="1000", height="170"><br>
-            We need to crack sqlsvc's password hash.<br>
-            <img src="../images/20.png"><br>
-            Now let's dump sqlsvc user's <i>secrets.</i><br>
-            <img src="../images/21.png"><br>
-            Using the credential's we gathered we can get a ticket for sqlsvc. Also we must NTLM encrypt Pegasus60 as the nthash.<br>
-            <img src="../images/22.png", width="1000", height="170"><br>
-            We're in 😎<br>
-            <img src="../images/23.png"><br>
-            Let's try to find more passwords before getting a reverse shell.<br>
-            There's few databeses we can choose from, although ScrambleHR looks the most interesting of them all.<br>
-            <img src="../images/24.png"><br>
-            Let's use ScrambleHR<br>
-            <img src="../images/25.png"><br>
-            We need to list tables.<br>
-            <img src="../images/26.png", width="1000", height="100"><br>
-            We have ourselves a password for MiscSvc!<br>
-            <img src="../images/27.png", width="1000", height="100"><br>
-            We need netcat to get a reverse shell.<br>
-            Let's create a http server using python.<br>
-            <img src="../images/28.png"><br>
-            And curl netcat.exe.<br>
-            <img src="../images/29.png"><br>
-            We have shell now :D<br>
-            <img src="../images/30.png"><br>
-            <img src="../images/31.png"><br>
-            But there's no flag in sqlsvc's desktop hmmm.<br>
-            Maybe we need to change users? Let's try to login to MiscSvc with the password we found earlier.<br>
-            <img src="../images/32.png"><br>
-            Let's get one more fucking shell, it's like a shellception in my terminal.<br>
-            <img src="../images/33.png"><br>
-            <img src="../images/34.png"><br>
-            Here's our user flag<br>
-            <img src="../images/35.png"><br>
-            Let's search for the root flag. I noticed there was an app in the /Shares/IT/Apps/Sales Order Client directory.<br>
-            <img src="../images/37.png"><br>
-            So I decided to download it so I can look into it a little more. 🕵️<br>
-            In order to download the file I firstly copied the file to the /temp directory and then used powercat to transfer them.<br>
-            <img src="../images/38.png"><br>
-            <img src="../images/39.png"><br>
-            <img src="../images/40.png"><br>
-            <img src="../images/41.png"><br>
-            <img src="../images/42.png"><br>
-            <img src="../images/43.png"><br>
-            It's an .NET program so we can't decompile it using Ghidra.<br>
-            <img src="../images/44.png"><br>
-            So I uploaded them to my windows pc, unfortunetly we need to be on windows to use DNSpy.<br>
-            DNSpy is an awsome tool to debug .NET applications<br>
-            Looking trough the code I realized that there was a deserialization vulnerability inside this function:<br>
-            <img src="../images/36.png"><br>
-            I won't explain deserialization vulnerabilities rn because it's like 2 A.M. and I don't want to make this any longer than It should be. But you can check out PwnFunction's video about it on youtube.<br>
-            In order to exploit this vulnerability we need to use ysoserial.net. This tool is also only available on windows.<br>
-            We'll use BinaryFormatter parameter because BinaryFormatter is the Format type that is specified in the application's code.<br>
-            <img src="../images/49.png", width="1000", height="100"><br>
-            Here's our payload, now how do we execute it?<br>
-            Opening up the app it looks like we have a defult port that is 4411, let's connect to it using netcat.<br>
-            Looks like we can execute commands.<br>
-            <img src="../images/46.png"><br>
-            It looks like our input is handled like this:<br>
-            <img src="../images/47.png"><br>
-            <img src="../images/48.png"><br>
-            We need to use UPLOAD_ORDER; command to access the vulnerable function.
-            <img src="../images/50.png"><br>
-            And we're root!<br>
-            <img src="../images/51.png"><br>
-        </p>
+            <p>I ran nmap with -A parameter to gather more information about the open ports.</p>
+            <img src="../images/2.png">
+            <img src="../images/3.png">
+            <img src="../images/4.png">
+            <img src="../images/5.png">
+            <p>As we can see, this is an Active Directory box with kerberos security. However before attempting to exploit kerberos I first checked out the site on port 80.</p>
+            <p>Looks like an ISP site(?) Let's gather more info.</p>
+            <img src="../images/6.png", width="1000", height="500">
+            <p>The NTLM authentication is off because someone hacked the website, interesting.</p>
+            <img src="../images/7.png", width="1000", height="500">
+            <p>These just look like they're a rabbit hole ¯\_(ツ)_/¯</p>
+            <img src="../images/8.png", width="1000", height="500">
+            <img src="../images/9.png", width="1000", height="500">
+            <h2 id="foothold" class="normal">Foothold 🤮:</h2>
+            <p>Ok, I don't think there's any vulnerabilities in the site itself. Let's take a look at the Active Directory.</p>
+            <p>Before attempting to login we must edit our /etc/hosts file and add the Active Directory domain. (Please ignore the olympus one, that's for another box.)</p>
+            <img src="../images/10.png">
+            <p>After that we can use kerbrute tool to enumerate Active Directory users.</p>
+            <img src="../images/11.png">
+            <p>You can find the user list I used in <a href="https://github.com/attackdebris/kerberos_enum_userlists/blob/master/A-Z.Surnames.txt">here.</a> However I removed all the dots from the Surname list using this command because usernames can't have dots in them.</p>
+            <img src="../images/12.png">
+            <p>Anyways let's look at the results!</p>
+            <img src="../images/13.png">
+            <p>We have few usernames, let's brute force them. Before trying to use a gigantic username list like rockyou.txt I'll just try to login with using the usernames as password first.</p>
+            <p>I'll use elpscrk because it's cool + the passwords might be upper/lowercase idfk.</p>
+            <img src="../images/14.png">
+            <p>Here's our generated password list:</p>
+            <img src="../images/15.png">
+            <p>I went ahead and tried to login with all the usernames. And I could only access ksimpson's account.</p>
+            <img src="../images/16.png">
+            <p>We have access to Ksimpson's account but it's underprivilaged as fuck so we need to access another account if we want to get into the system.</p>
+            <p>I googled up kerberos exploits and I stumbled upon <a href="https://www.youtube.com/watch?v=xH5T9-m9QXw">VBScrub</a>'s kerberoast tutorial, the funny thing is this is the same guy who made this machine, so it was pretty clear this was the way.</p>
+            <p>First of all let's go ahead and get TGT (Ticket-Granting-Ticket) as ksimpson user.</p>
+            <img src="../images/17.png">
+            <p>After that we must get Service Principal Names for ksimpson, that way we might be able to get access to other user's account.</p>
+            <p>This is where I got stuck a little bit because impacket-GetUserSPNs kept command failing due to BaseException error.</p>
+            <p>However I stumbled into VBScrub's Github Issue about this bug. <a href="https://github.com/SecureAuthCorp/impacket/issues/1206">Here</a>'s the solution if you're interested.</p>
+            <p>Before getting user spn's we must export KRB5CCNAME as kksimpson.ccache.</p>
+            <img src="../images/18.png">
+            <p>Now we can get user spn's</p>
+            <img src="../images/19.png", width="1000", height="170">
+            <p>We need to crack sqlsvc's password hash.</p>
+            <img src="../images/20.png">
+            <p>Now let's dump sqlsvc user's <i>secrets.</i></p>
+            <img src="../images/21.png">
+            <p>Using the credential's we gathered we can get a ticket for sqlsvc. Also we must NTLM encrypt Pegasus60 as the nthash.</p>
+            <img src="../images/22.png", width="1000", height="170">
+            <p>We're in 😎</p>
+            <img src="../images/23.png">
+            <h2 id="user" class="normal">User 🥳:</h2>
+            <p>Let's try to find more passwords before getting a reverse shell.</p>
+            <p>There's few databeses we can choose from, although ScrambleHR looks the most interesting of them all.</p>
+            <img src="../images/24.png">
+            <p>Let's use ScrambleHR</p>
+            <img src="../images/25.png">
+            <p>We need to list tables.</p>
+            <img src="../images/26.png", width="1000", height="100">
+            <p>We have ourselves a password for MiscSvc!</p>
+            <img src="../images/27.png", width="1000", height="100">
+            <p>We need netcat to get a reverse shell.</p>
+            <p>Let's create a http server using python.</p>
+            <img src="../images/28.png">
+            <p>And curl netcat.exe.</p>
+            <img src="../images/29.png">
+            <p>We have shell now :D</p>
+            <img src="../images/30.png">
+            <img src="../images/31.png">
+            <p>But there's no flag in sqlsvc's desktop hmmm.</p>
+            <p>Maybe we need to change users? Let's try to login to MiscSvc with the password we found earlier.</p>
+            <img src="../images/32.png">
+            <p>Let's get one more fucking shell, it's like a shellception in my terminal.</p>
+            <img src="../images/33.png">
+            <img src="../images/34.png">
+            <p>Here's our user flag</p>
+            <img src="../images/35.png">
+            <h2 id="root" class="normal">Root 😎:</h2>
+            <p>Let's search for the root flag. I noticed there was an app in the /Shares/IT/Apps/Sales Order Client directory.</p>
+            <img src="../images/37.png">
+            <p>I decided to download it so I can look into it a little more. 🕵️</p>
+            <p>In order to download the file I firstly copied the file to the /temp directory and then used powercat to transfer them.</p>
+            <img src="../images/38.png">
+            <img src="../images/39.png">
+            <img src="../images/40.png">
+            <img src="../images/41.png">
+            <img src="../images/42.png">
+            <img src="../images/43.png">
+            <p>It's an .NET program so we can't decompile it using Ghidra.</p>
+            <img src="../images/44.png">
+            <p>I uploaded them to my windows pc, unfortunetly we need to be on windows to use DNSpy.</p>
+            <p>DNSpy is an awsome tool to debug .NET applications</p>
+            <p>Looking trough the code I realized that there was a deserialization vulnerability inside this function:</p>
+            <img src="../images/36.png">
+            <p>I won't explain deserialization vulnerabilities rn because it's like 2 A.M. and I don't want to make this any longer than It should be. But you can check out PwnFunction's video about it on youtube.</p>
+            <p>In order to exploit this vulnerability we need to use ysoserial.net. This tool is also only available on windows.</p>
+            <p>We'll use BinaryFormatter parameter because BinaryFormatter is the Format type that is specified in the application's code.</p>
+            <img src="../images/49.png", width="1000", height="100">
+            <p>Here's our payload, now how do we execute it?</p>
+            <p>Opening up the app it looks like we have a defult port that is 4411, let's connect to it using netcat.</p>
+            <p>Looks like we can execute commands.</p>
+            <img src="../images/46.png">
+            <p>It looks like our input is handled like this:</p>
+            <img src="../images/47.png">
+            <img src="../images/48.png">
+            <p>We need to use UPLOAD_ORDER; command to access the vulnerable function.</p>
+            <img src="../images/50.png">
+            <p>And we're root!</p>
+            <img src="../images/51.png">
+            <h2 id="analysis" class="normal">Analysis 🤓:</h2>
+            <p>I learned a lot while doing this box like deserialization vulnerabilities, .NET reverse engineering and more.</p>
+            <p>I wanna thank VBScrub for making this awsome box.</p>
+            <p>Also don't forget to check his channel out for more kerberos vulnerabilities:</p>
+            <p><a href="https://www.youtube.com/channel/UCpoyhjwNIWZmsiKNKpsMAQQ">https://www.youtube.com/channel/UCpoyhjwNIWZmsiKNKpsMAQQ</a></p>
         </div>
     </body>
 </html>
