@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="/index.js"></script>
+        <script src="/blogs/blog.js"></script>
+        <title>1do7 | Hack The Box: Stream.io</title>
+    </head>
+    <body>
+        <div class = "center">
+            <h1>HTB Stream.io Write-up</h1>
+            <h2 id="passive_recon" class="normal">Recon Work 🕵:</h2>
+            <p>As usual I'll be using RustScan to scan ports and nmap to gather more information.</p>
+            <p>This box looks like it's an Active Directory box.</p>
+            <p>It also has port 80(http) and 443(https) open, so it is hosting a web application.</p>
+            <img src="https://imgur.com/5iOshLW.gif", width="750"><br>
+            <p>I couldn't highlight them properly but we managed to find some domains.</p>
+            <p>And, we'll add them to our /etc/hosts file so we can access them.</p>
+            <img src="https://imgur.com/ajizQiE.png">
+            <img src="https://imgur.com/ct42ADv.png">
+            <p>Let's look at port 80 aka http first.</p>
+            <p>This doesn't look useful at all.</p>
+            <img src="https://imgur.com/fhv4zIh.png", width="500">
+            <p>Maybe we'll find something on https?</p>
+            <p>Yes we will :p</p>
+            <p>It might tell you that SSL certificate is wrong or some shit like that, just click continue.</p>
+            <img src="https://i.imgur.com/qzyy8Jm.gif", width="750"><br>
+            <p>We have a broken ass application but I'm sure it has something to do with my internet, I did this box before and it used to work fine.</p>
+            <p>Anyways broken or not, we don't care about that anyways. Let's try to register as a new user.</p>
+            <img src="https://imgur.com/uJkKJe2.png", width="300">
+            <p>We can register but can't login?</p>
+            <img src="https://imgur.com/K7nxvSp.png">
+            <h2 id="foothold" class="normal">Foothold 🤮:</h2>
+            <p>Enough doing recon, let's bring out the big guns.</p>
+            <p>By big guns I mean scanning the login form with sqlmap like a fucking skiddie.</p>
+            <p>I captured and saved my post request using burpsuite.</p>
+            <img src="https://imgur.com/wdG5CI8.gif", width="750"><br>
+            <p>And then I used sqlmap to scan for sql injection vulnerabilities using the --force-ssl parameter for it to ignore SSL errors.</p>
+            <p>We found a vulnerability!</p>
+            <img src="https://imgur.com/0rmaHRj.png", width="750"><br>
+            <p>Let's dump all the databases.</p>
+            <img src="https://imgur.com/BbJNVS6.png", width="750"><br>
+            <p>Let's dump every table for STREAMIO database.</p>
+            <img src="https://imgur.com/RGWHojF.png">
+            <p>We got users, let's dump 'em.</p>
+            <p>I looked into breachforums after 5 hours of dumping only one user and it turns out there are 33 USERS. 33 FUCKING USERS.</p>
+            <p>So this is where shit gets complicated, you see my home wifi is shitty so this would take 33*5=165 hours or about a week to finish.</p>
+            <p>I usually use another wi-fi because it's faster but that's not possible atm.</p>
+            <p>so, unfortunately this isn't going to work out.</p>
+            <p>I'm sorry but I had to cheat a little bit.</p>
+            <p>We would've needed to crack the hash we found using john the ripper but I could only find the already cracked password.</p>
+            <p>Here it is:</p>
+            <pre><code>yoshihide:  66boysandgirls..</code></pre>
+            <p>After logging in it doesn't look like much changed in the site.</p>
+            <p>let's run feroxbuster with lowercase wordlist. (since this is a windows box it isn't case sensitive.)</p>
+            <p>We'll also need to use the -k parameter to ignore ssl issues.</p>
+            <img src="https://i.imgur.com/LSkOuwO.png", width="750"><br>
+            <p>we have a directory called admin.</p>
+            <img src="https://imgur.com/dZhoKBj.png", width="750"><br>
+            <p>let's check it out.</p>
+            <img src="https://imgur.com/r4yR7j5.png", width="750"><br>
+            <p>Every page at /admin has a parameter, maybe we need to fuzz for other parameters?</p>
+            <img src="https://imgur.com/Oey4CLx.png"><br>
+            <img src="https://imgur.com/nRGgP5G.png"><br>
+            <img src="https://imgur.com/yg0DJn7.png"><br>
+            <img src="https://imgur.com/sUHJjaH.png"><br>
+            <p>We have another parameter called debug, I wonder what it does.</p>
+            <img src="https://i.imgur.com/prxzs9A.png", width="750"><br>
+            After fuzzing it again we only get one respone back:<br>
+            <img src="https://imgur.com/FgOvb9T.png", width="750"><br>
+            <pre><code class="console">this option is for developers only ---- ERROR ----</code></pre>
+            Let's try to access another file inside /admin.
+            We can access master.php 
+            <img src="https://imgur.com/l3w650r.png", width="750"><br>
+            <p>This looks like an LFI vulnerability. I got help from hacktricks, <a href="https://book.hacktricks.xyz/pentesting-web/file-inclusion">here's the link</a> if you want to check out their LFI methodology</p>
+            <p>Here's the payload I'll be using to base64 encode index.php and return it to me.</p>
+            <pre><code>https://streamio.htb/admin/?debug=php://filter/convert.base64-encode/resource=index.php</code></pre>
+            <p>I saved the base64 encoded string into a.txt and decoded it</p>
+            <pre><code>base64 -d a.txt</code></pre>
+            <p>We found some stuff, still not enough to get RCE</p>
+            <pre><code>$connection = array("Database"=>"STREAMIO", "UID" => "db_admin", "PWD" => 'B1@hx31234567890');</code></pre>
+            <p>Let's read more stuff</p>
+            Looking trough master.php we can see it has an eval function, that's a big no-no.
+            <pre><code class="language-php">
+if(isset($_POST['include']))
+{
+if($_POST['include'] !== "index.php" ) 
+eval(file_get_contents($_POST['include']));
+else
+echo(" ---- ERROR ---- ");
+
+}                
+            </code></pre>
+            <p>An eval function inside php is like exec() function in python, it executes php code.</p>
+            <p>If we somehow get inside that function we can get RCE.</p>
+            <p>Here's the payload:</p>
+            <img src="https://imgur.com/u0SJEtU.png">
+            <p>I didn't put the command in a text format so you can understand it rather than just copy pasting it.</p>
+            <p>Here's how our payload will work:</p>
+            <p>We'll use -k to ignore SSL Errors, -s to run it silent, -X 'POST' to make a post request, we'll put the default header inside -H, we'll put our cookie inside -b, we'll add  and decode a base64 string( <i>system('whoami');</i> ) using --add-data inside include because we can't use special characters, and finnaly we'll use https://streamio.htb/admin/?debug=master.php to access the php file using LFI.</p>
+            <p>After sending this, this is what we get back:</p>
+            <img src="https://imgur.com/PXKE3EM.png">
+            <h2 id="user" class="normal">User 🥳:</h2>
+            <p>Ok we have RCE, let's get a reverse shell real quick.</p>
+            <p>Let's install netcat by downloading netcat.exe that is on our http server (don't forget that my IP is different from yours, copy-pasting won't work):</p>
+            <pre><code>python3 -m http.server</code></pre>
+            <img src="https://imgur.com/HXRetJx.png">
+            <p>Let's run ncat and get a reverse shell.</p>
+            <img src="https://imgur.com/MGWzvIy.png">
+            <p>We're in 😎</p>
+            <img src="https://imgur.com/33oKqXU.png">
+            <p>But we still need to priv esc to get root and user flag :(</p>
+            <p>(I fucking hate windows boxes)</p>
+            <p>We had another database called streamio_backup, maybe we try to find more passwords there?</p>
+            <p>Sql is running on port 1433 by defult</p>
+            <img src="https://imgur.com/BGyKi9p.png">
+            <p>Let's install chisel to connect to sql database on our pc since we don't have our tools inside our reverse shell.</p>
+            <img src="https://imgur.com/nQvS5d6.png">
+            <p>We'll use the port 31337 ofc</p>
+            <img src="https://imgur.com/h45p38z.png">
+            <p>Let's connect to our server</p>
+            <img src="https://imgur.com/giIW2qK.png">
+            <p>We should be able to do whatever we want freely on port 1433 now.</p>
+            <p>Let's use the creds we got from reading index.php earlier.</p>
+            <pre><code>sqsh -S 127.0.0.1 -U db_admin -P "B1@hx31234567890" -D streamio_backup</code></pre>
+            <p>Let's dump the tables:</p>
+            <img src="https://imgur.com/NGxosbC.png", width="750">
+            <p>Let's dump users:</p>
+            <img src="https://imgur.com/AdCElp9.png", width="750">
+            <p>Let's quit from chisel; we don't need it anymore.</p>
+            <p>If we list users we can see that there is a user named nikk37.</p>
+            <p>Let's crack it using hashcat, it looks like md5 im 99% sure of that.</p>
+            <img src="https://imgur.com/wG9Z6wr.png">
+            <img src="https://imgur.com/j40kDIM.png">
+            <p>We have a password:</p>
+            <pre><code>389d14cb8e4e9b94b137deb1caf0612a:get_dem_girls2@yahoo.com </code></pre>
+            <p>Let's use evil-winrm to get inside the box</p>
+            <img src="https://imgur.com/U2xtrRz.png">
+            <h2 id="root" class="normal">Root 😎:</h2>
+            <p>y this box got firefox installed?</p>
+            <img src="https://imgur.com/DIBRRNR.png">
+            <p>We have key4.db, and it's not empty. Maybe the admin passowrd is in there somewhere?</p>
+            <img src="https://imgur.com/3D9E5MK.png">
+            <p>Let's download it.</p>
+            <p>We might have the file but we still need to crack it.</p>
+            <p>Let's use firepwd to crack it and finish this stupid ass box.</p>
+        </div>
+    </body>
+</html>
