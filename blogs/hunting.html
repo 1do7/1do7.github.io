@@ -179,7 +179,7 @@ undefined4 FUN_00011460(void)
         <p>First of all we want to slow the SIGALARM before trying to read the stack. Let's use the alarm syscall to generate a SIGALARM signal that is long enough to read the stack in time.</p>
         <p>You can find the syscalls inside <a href="https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md#x86-32_bit">here</a>.</p>
         <pre><code class="console">
-section .text:
+section .text
     _start:
         push 0x3c ;0x3c equals to 60 in decimal. Push 60 seconds inside the stack.
         pop ebx ;set ebx register to 60 (seconds).
